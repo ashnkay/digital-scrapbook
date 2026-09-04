@@ -1,0 +1,87 @@
+:root {
+  --paper: #f3e6d4;
+  --ink: #2a2118;
+  --muted: #7a6a58;
+  --tape: #c4a574;
+  --card: #fff8ee;
+  --shadow: rgba(42, 33, 24, 0.18);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% 10%, #fff7ea 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, #e8d5b8 0%, transparent 35%),
+    var(--paper);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px dashed var(--tape);
+}
+
+.top h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+#new-album {
+  border: none;
+  background: var(--ink);
+  color: var(--card);
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.album {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 1rem 0.85rem 0.9rem;
+  box-shadow: 0 8px 18px var(--shadow);
+  border: 1px solid rgba(42, 33, 24, 0.08);
+  cursor: pointer;
+  text-align: left;
+}
+
+.album-spine {
+  height: 8px;
+  width: 40%;
+  background: var(--tape);
+  border-radius: 999px;
+  margin-bottom: 0.75rem;
+}
+
+.album h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.album p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 1rem;
+}
