@@ -145,3 +145,35 @@ body {
   font-family: "Segoe UI", cursive, sans-serif;
   color: var(--ink);
 }
+
+.album {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.album-open {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 1rem 0.85rem 0.9rem;
+  cursor: pointer;
+}
+
+.album-delete {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(42, 33, 24, 0.08);
+  color: var(--ink);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
