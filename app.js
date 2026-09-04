@@ -1,4 +1,15 @@
 const STORAGE_KEY = "kayla-scrapbook-v1";
+const MAX_PHOTO = 900;
+const BACKGROUNDS = [
+  { id: "paper", label: "Paper" },
+  { id: "grid", label: "Grid" },
+  { id: "dots", label: "Dots" },
+  { id: "lined", label: "Lined" },
+  { id: "blush", label: "Blush" },
+  { id: "sage", label: "Sage" },
+  { id: "sky", label: "Sky" },
+  { id: "night", label: "Night" },
+];
 
 function load() {
   try {
@@ -24,14 +35,74 @@ function getAlbum(data, id) {
   return data.albums.find((a) => a.id === id);
 }
 
-function ensurePage(album) {
-  if (!album.pages || !album.pages.length) {
-    album.pages = [{ id: uid("p"), items: [] }];
+function ensurePages(album) {
+  if (!Array.isArray(album.pages) || !album.pages.length) {
+    album.pages = [newPage()];
   }
-  return album.pages[0];
+  album.pages.forEach((p) => {
+    if (!Array.isArray(p.items)) p.items = [];
+    if (!p.bg) p.bg = "paper";
+  });
+  return album.pages;
+}
+
+function newPage() {
+  return { id: uid("p"), bg: "paper", items: [] };
+}
+
+function updateItem(albumId, pageId, itemId, patch) {
+  const data = load();
+  const album = getAlbum(data, albumId);
+  if (!album) return;
+  const page = ensurePages(album).find((p) => p.id === pageId);
+  if (!page) return;
+  const item = page.items.find((i) => i.id === itemId);
+  if (!item) return;
+  Object.assign(item, patch);
+  save(data);
+}
+
+function readPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, MAX_PHOTO / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("bad photo"));
+    };
+    img.src = url;
+  });
+}
+
+function pickPhoto(onDone) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.onchange = async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try {
+      onDone(await readPhoto(file));
+    } catch {
+      alert("Could not use that photo.");
+    }
+  };
+  input.click();
 }
 
 const app = document.getElementById("app");
+const viewState = { pageIndex: 0 };
 
 function showShelf() {
   const data = load();
@@ -49,7 +120,7 @@ function showShelf() {
     data.albums.forEach((album) => {
       const card = document.createElement("div");
       card.className = "album";
-      const pages = album.pages?.length || 0;
+      const pages = ensurePages(album).length;
       card.innerHTML =
         '<button type="button" class="album-open">' +
         '<div class="album-spine"></div><h2></h2><p></p>' +
@@ -58,7 +129,10 @@ function showShelf() {
       card.querySelector("h2").textContent = album.title;
       card.querySelector("p").textContent =
         pages + " page" + (pages === 1 ? "" : "s");
-      card.querySelector(".album-open").addEventListener("click", () => showAlbum(album.id));
+      card.querySelector(".album-open").addEventListener("click", () => {
+        viewState.pageIndex = 0;
+        showAlbum(album.id);
+      });
       card.querySelector(".album-delete").addEventListener("click", (e) => {
         e.stopPropagation();
         if (!confirm("Delete album " + album.title + "?")) return;
@@ -78,7 +152,7 @@ function showShelf() {
     data2.albums.push({
       id: uid("a"),
       title: title.trim(),
-      pages: [{ id: uid("p"), items: [] }],
+      pages: [newPage()],
     });
     save(data2);
     showShelf();
@@ -92,7 +166,10 @@ function showAlbum(albumId) {
     showShelf();
     return;
   }
-  const page = ensurePage(album);
+  const pages = ensurePages(album);
+  if (viewState.pageIndex >= pages.length) viewState.pageIndex = pages.length - 1;
+  if (viewState.pageIndex < 0) viewState.pageIndex = 0;
+  const page = pages[viewState.pageIndex];
 
   app.innerHTML =
     '<header class="top">' +
@@ -100,82 +177,195 @@ function showAlbum(albumId) {
     "<h1></h1>" +
     '<button id="add-polaroid" type="button">+ Polaroid</button>' +
     "</header>" +
-    '<main class="page-wrap"><div id="page" class="page"></div></main>';
+    '<div class="toolbar">' +
+    '<button id="prev-page" type="button" class="ghost">Prev</button>' +
+    '<span id="page-label"></span>' +
+    '<button id="next-page" type="button" class="ghost">Next</button>' +
+    '<button id="add-page" type="button" class="ghost">+ Page</button>' +
+    '<button id="del-page" type="button" class="ghost danger">Del page</button>' +
+    '<button id="bg-page" type="button" class="ghost">Background</button>' +
+    "</div>" +
+    '<main class="page-wrap"><div id="page" class="page"></div></main>' +
+    '<p class="hint">Tap photo to add/replace. Tap label to rename. X deletes polaroid.</p>';
 
   app.querySelector("h1").textContent = album.title;
+  document.getElementById("page-label").textContent =
+    viewState.pageIndex + 1 + " / " + pages.length;
+
   document.getElementById("back").addEventListener("click", showShelf);
+
+  document.getElementById("prev-page").addEventListener("click", () => {
+    if (viewState.pageIndex <= 0) return;
+    viewState.pageIndex -= 1;
+    showAlbum(albumId);
+  });
+  document.getElementById("next-page").addEventListener("click", () => {
+    if (viewState.pageIndex >= pages.length - 1) return;
+    viewState.pageIndex += 1;
+    showAlbum(albumId);
+  });
+
+  document.getElementById("add-page").addEventListener("click", () => {
+    const data2 = load();
+    const a = getAlbum(data2, albumId);
+    ensurePages(a).push(newPage());
+    save(data2);
+    viewState.pageIndex = a.pages.length - 1;
+    showAlbum(albumId);
+  });
+
+  document.getElementById("del-page").addEventListener("click", () => {
+    const data2 = load();
+    const a = getAlbum(data2, albumId);
+    const list = ensurePages(a);
+    if (list.length <= 1) {
+      alert("Need at least one page.");
+      return;
+    }
+    if (!confirm("Delete this page?")) return;
+    list.splice(viewState.pageIndex, 1);
+    save(data2);
+    if (viewState.pageIndex >= list.length) viewState.pageIndex = list.length - 1;
+    showAlbum(albumId);
+  });
+
+  document.getElementById("bg-page").addEventListener("click", () => {
+    const names = BACKGROUNDS.map((b, i) => i + 1 + ") " + b.label).join("\n");
+    const pick = prompt("Background:\n" + names, "1");
+    if (pick === null) return;
+    const idx = parseInt(pick, 10) - 1;
+    if (!BACKGROUNDS[idx]) return;
+    const data2 = load();
+    const a = getAlbum(data2, albumId);
+    const p = ensurePages(a)[viewState.pageIndex];
+    p.bg = BACKGROUNDS[idx].id;
+    save(data2);
+    showAlbum(albumId);
+  });
+
   document.getElementById("add-polaroid").addEventListener("click", () => {
     const data2 = load();
     const a = getAlbum(data2, albumId);
-    const p = ensurePage(a);
+    const p = ensurePages(a)[viewState.pageIndex];
     p.items.push({
       id: uid("i"),
       type: "polaroid",
       label: "Photo",
+      src: "",
       x: 24 + (p.items.length % 3) * 18,
       y: 30 + (p.items.length % 4) * 16,
-      rotation: (p.items.length % 2 === 0 ? -3 : 4),
+      rotation: p.items.length % 2 === 0 ? -3 : 4,
     });
     save(data2);
     showAlbum(albumId);
   });
 
   const pageEl = document.getElementById("page");
+  pageEl.className = "page bg-" + (page.bg || "paper");
+
   page.items.forEach((item) => {
     if (item.type !== "polaroid") return;
     const el = document.createElement("div");
     el.className = "polaroid";
     el.style.left = item.x + "%";
     el.style.top = item.y + "%";
-    el.style.transform = "translate(-50%, -50%) rotate(" + item.rotation + "deg)";
+    el.style.transform =
+      "translate(-50%, -50%) rotate(" + (item.rotation || 0) + "deg)";
     el.innerHTML =
+      '<button type="button" class="item-delete" aria-label="Delete">X</button>' +
       '<div class="polaroid-photo"></div><div class="polaroid-label"></div>';
-    el.querySelector(".polaroid-label").textContent = item.label;
-    makeDraggable(el, item, albumId);
+
+    const photo = el.querySelector(".polaroid-photo");
+    if (item.src) {
+      photo.style.backgroundImage = 'url("' + item.src.replace(/"/g, '\\"') + '")';
+      photo.classList.add("has-photo");
+    }
+    el.querySelector(".polaroid-label").textContent = item.label || "Photo";
+
+    let dragMoved = false;
+    makeDraggable(el, item, albumId, page.id, () => {
+      dragMoved = true;
+    });
+
+    photo.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (dragMoved) {
+        dragMoved = false;
+        return;
+      }
+      pickPhoto((src) => {
+        updateItem(albumId, page.id, item.id, { src: src });
+        showAlbum(albumId);
+      });
+    });
+
+    el.querySelector(".polaroid-label").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const next = prompt("Label", item.label || "Photo");
+      if (next === null) return;
+      updateItem(albumId, page.id, item.id, { label: next.trim() || "Photo" });
+      showAlbum(albumId);
+    });
+
+    el.querySelector(".item-delete").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!confirm("Delete this polaroid?")) return;
+      const data2 = load();
+      const a = getAlbum(data2, albumId);
+      const p = ensurePages(a).find((pg) => pg.id === page.id);
+      if (!p) return;
+      p.items = p.items.filter((i) => i.id !== item.id);
+      save(data2);
+      showAlbum(albumId);
+    });
+
     pageEl.appendChild(el);
   });
 }
 
-function makeDraggable(el, item, albumId) {
+function makeDraggable(el, item, albumId, pageId, onMoved) {
   let dragging = false;
+  let moved = false;
+  let startX = 0;
+  let startY = 0;
 
   function onMove(clientX, clientY) {
     const pageEl = document.getElementById("page");
     const rect = pageEl.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
-    item.x = Math.min(92, Math.max(8, x));
-    item.y = Math.min(92, Math.max(8, y));
+    item.x = Math.min(92, Math.max(8, ((clientX - rect.left) / rect.width) * 100));
+    item.y = Math.min(92, Math.max(8, ((clientY - rect.top) / rect.height) * 100));
     el.style.left = item.x + "%";
     el.style.top = item.y + "%";
   }
 
   function persist() {
-    const data = load();
-    const album = getAlbum(data, albumId);
-    const page = ensurePage(album);
-    const target = page.items.find((i) => i.id === item.id);
-    if (target) {
-      target.x = item.x;
-      target.y = item.y;
-      save(data);
-    }
+    updateItem(albumId, pageId, item.id, { x: item.x, y: item.y });
   }
 
   el.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".item-delete")) return;
     dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
     el.setPointerCapture(e.pointerId);
     el.classList.add("dragging");
   });
+
   el.addEventListener("pointermove", (e) => {
     if (!dragging) return;
+    if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > 8) {
+      moved = true;
+      if (onMoved) onMoved();
+    }
     onMove(e.clientX, e.clientY);
   });
+
   el.addEventListener("pointerup", () => {
     if (!dragging) return;
     dragging = false;
     el.classList.remove("dragging");
-    persist();
+    if (moved) persist();
   });
 }
 
