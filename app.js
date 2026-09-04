@@ -47,17 +47,27 @@ function showShelf() {
     shelf.innerHTML = '<p class="empty">No albums yet. Tap + Album.</p>';
   } else {
     data.albums.forEach((album) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "album";
+      const card = document.createElement("div");
+      card.className = "album";
       const pages = album.pages?.length || 0;
-      btn.innerHTML =
-        '<div class="album-spine"></div><h2></h2><p></p>';
-      btn.querySelector("h2").textContent = album.title;
-      btn.querySelector("p").textContent =
+      card.innerHTML =
+        '<button type="button" class="album-open">' +
+        '<div class="album-spine"></div><h2></h2><p></p>' +
+        "</button>" +
+        '<button type="button" class="album-delete" aria-label="Delete album">X</button>';
+      card.querySelector("h2").textContent = album.title;
+      card.querySelector("p").textContent =
         pages + " page" + (pages === 1 ? "" : "s");
-      btn.addEventListener("click", () => showAlbum(album.id));
-      shelf.appendChild(btn);
+      card.querySelector(".album-open").addEventListener("click", () => showAlbum(album.id));
+      card.querySelector(".album-delete").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm("Delete album " + album.title + "?")) return;
+        const data2 = load();
+        data2.albums = data2.albums.filter((a) => a.id !== album.id);
+        save(data2);
+        showShelf();
+      });
+      shelf.appendChild(card);
     });
   }
 
@@ -86,7 +96,7 @@ function showAlbum(albumId) {
 
   app.innerHTML =
     '<header class="top">' +
-    '<button id="back" type="button" class="ghost">← Shelf</button>' +
+    '<button id="back" type="button" class="ghost">Back</button>' +
     "<h1></h1>" +
     '<button id="add-polaroid" type="button">+ Polaroid</button>' +
     "</header>" +
