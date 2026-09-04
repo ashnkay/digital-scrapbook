@@ -24,23 +24,59 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px dashed var(--tape);
 }
 
 .top h1 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   letter-spacing: 0.02em;
+  flex: 1;
+  text-align: center;
 }
 
-#new-album {
+#new-album,
+#add-polaroid {
   border: none;
   background: var(--ink);
   color: var(--card);
-  padding: 0.55rem 0.9rem;
+  padding: 0.55rem 0.8rem;
   border-radius: 999px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.ghost {
+  border: 1px solid rgba(42, 33, 24, 0.25);
+  background: transparent;
+  color: var(--ink);
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ghost.danger {
+  border-color: rgba(140, 40, 40, 0.35);
+  color: #8c2828;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+}
+
+#page-label {
+  font-size: 0.9rem;
+  color: var(--muted);
+  min-width: 3.5rem;
+  text-align: center;
 }
 
 .shelf {
@@ -51,13 +87,24 @@ body {
 }
 
 .album {
+  position: relative;
   background: var(--card);
   border-radius: 10px;
-  padding: 1rem 0.85rem 0.9rem;
   box-shadow: 0 8px 18px var(--shadow);
   border: 1px solid rgba(42, 33, 24, 0.08);
-  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+}
+
+.album-open {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
   text-align: left;
+  padding: 1rem 0.85rem 0.9rem;
+  cursor: pointer;
 }
 
 .album-spine {
@@ -79,6 +126,23 @@ body {
   font-size: 0.8rem;
 }
 
+.album-delete,
+.item-delete {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(42, 33, 24, 0.08);
+  color: var(--ink);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+}
+
 .empty {
   grid-column: 1 / -1;
   text-align: center;
@@ -86,17 +150,8 @@ body {
   padding: 2rem 1rem;
 }
 
-.ghost {
-  border: 1px solid rgba(42, 33, 24, 0.25);
-  background: transparent;
-  color: var(--ink);
-  padding: 0.45rem 0.75rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
 .page-wrap {
-  padding: 1rem 1.25rem 2rem;
+  padding: 0.5rem 1.25rem 1rem;
 }
 
 .page {
@@ -104,15 +159,36 @@ body {
   width: min(100%, 420px);
   margin: 0 auto;
   aspect-ratio: 3 / 4;
-  background: #f7ecda;
   border: 1px solid rgba(42, 33, 24, 0.1);
   box-shadow: 0 12px 28px var(--shadow);
   overflow: hidden;
+}
+
+.bg-paper { background: #f7ecda; }
+.bg-grid {
+  background-color: #f7ecda;
   background-image:
-    linear-gradient(rgba(42, 33, 24, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(42, 33, 24, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(42, 33, 24, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 33, 24, 0.06) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+.bg-dots {
+  background-color: #f4e7d2;
+  background-image: radial-gradient(rgba(42, 33, 24, 0.14) 1.2px, transparent 1.3px);
+  background-size: 16px 16px;
+}
+.bg-lined {
+  background-color: #f8efdf;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 27px,
+    rgba(70, 110, 160, 0.25) 28px
+  );
+}
+.bg-blush { background: linear-gradient(160deg, #f7d7d2, #f3e6d4 55%, #efe0c8); }
+.bg-sage { background: linear-gradient(160deg, #d9e4d2, #eef2e6 50%, #f3ead8); }
+.bg-sky { background: linear-gradient(160deg, #d5e7f5, #eef4f8 45%, #f5f0e8); }
+.bg-night { background: linear-gradient(160deg, #2b3340, #3d4654 55%, #52483c); color: #f5efe6; }
 
 .polaroid {
   position: absolute;
@@ -134,46 +210,26 @@ body {
 .polaroid-photo {
   width: 100%;
   aspect-ratio: 1;
-  background:
-    linear-gradient(135deg, #d9c4a5, #b89a78 40%, #8f7357);
+  background: linear-gradient(135deg, #d9c4a5, #b89a78 40%, #8f7357);
+  background-size: cover;
+  background-position: center;
+}
+
+.polaroid-photo.has-photo {
+  background-color: #ddd;
 }
 
 .polaroid-label {
   margin-top: 8%;
   text-align: center;
   font-size: 0.75rem;
-  font-family: "Segoe UI", cursive, sans-serif;
   color: var(--ink);
 }
 
-.album {
-  position: relative;
-  padding: 0;
-  overflow: hidden;
-}
-
-.album-open {
-  display: block;
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  padding: 1rem 0.85rem 0.9rem;
-  cursor: pointer;
-}
-
-.album-delete {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  width: 1.6rem;
-  height: 1.6rem;
-  border: none;
-  border-radius: 999px;
-  background: rgba(42, 33, 24, 0.08);
-  color: var(--ink);
+.hint {
+  text-align: center;
+  color: var(--muted);
   font-size: 0.85rem;
-  line-height: 1;
-  cursor: pointer;
+  padding: 0 1rem 1.5rem;
+  margin: 0;
 }
